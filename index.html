@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <link href="css/app.css" rel="stylesheet" media="screen">
+
+    <link rel="stylesheet" href="http://libs.cartocdn.com/cartodb.js/v3/themes/css/cartodb.css" />
+  </head>
+  <body>
+    <h1>Hello, world!</h1>
+    <div id="hover"></div>
+
+    <div id="map"></div>
+
+
+    <script src="http://code.jquery.com/jquery.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.7.0/underscore-min.js"></script>
+    <script src="http://libs.cartocdn.com/cartodb.js/v3/cartodb.js"></script>
+
+    <script>
+    /*globals cartodb, L, _ : true */
+
+
+    var getBins = function(done) {
+      var sql = new cartodb.SQL({ user: 'localdata' });
+      sql.execute("SELECT CDB_QuantileBins(array_agg(d5ar::int), 7) FROM smartlocation")
+        .done(function(data) {
+          var bins = data.rows[0].cdb_quantilebins;
+          done(null, bins);
+
+        })
+        .error(function(errors) {
+          // errors contains a list of errors
+          console.log("errors:" + errors);
+          done(errors);
+        });
+    };
+
+
+    $(function() {
+      var template = _.template($('#choropleth-styles').html());
+
+      var makeStyles = function(options) {
+        var styles = template(options);
+        // console.log(styles);
+        return styles;
+      };
+
+      var map = new L.Map('map', {
+        center: [42.819077, -74.882812],
+        zoom: 7
+      });
+
+      L.tileLayer('https://a.tiles.mapbox.com/v3/matth.map-n9bps30s/{z}/{x}/{y}.png', { attribution: 'Mapbox <a href="http://mapbox.com/about/maps" target="_blank">Terms &amp; Feedback</a>'
+      }).addTo(map);
+
+      var layerUrl = 'http://localdata.cartodb.com/api/v2/viz/1d573736-52e5-11e4-88e0-0e853d047bba/viz.json';
+
+      cartodb.createLayer(map, layerUrl, function(layer) {
+
+        getBins(function(error, bins) {
+          console.log('Got bins', bins);
+
+          var styles = makeStyles({
+            table: '#tl_2010_36_bg10',
+            column: 'd5ar',
+            bins: bins
+          });
+
+          var sql = "select     bg.*,  sl.d5ar,  sl.csa_name from    tl_2010_36_bg10 bg left join smartlocation sl     on bg.geoid10 = sl.geoid10";
+
+          // add populated places points over the countries layer
+          layer.createSubLayer({
+            sql: sql,
+            cartocss: styles
+          });
+
+          layer.addTo(map);
+
+        });
+
+      });//.addTo(map);
+
+
+      //var sublayers = [];
+      // SELECT CDB_QuantileBins(array_agg(numeric_column), 7) FROM table_name
+      // cartodb.createLayer(map, layerUrl)
+      //   .addTo(map)
+      //   .on('done', function(layer) {
+      //     // change the query for the first layer
+      //     sublayers.push(sublayer);
+      //   }).on('error', function() {
+      //     //log the error
+      //   });
+      // cartodb.createVis('map', 'http://localdata.cartodb.com/api/v2/viz/1d573736-52e5-11e4-88e0-0e853d047bba/viz.json');
+    });
+    </script>
+
+
+    <script type="text/template" id="choropleth-styles">
+      /** choropleth visualization */
+
+      <%= table %>{
+        polygon-fill: #FFFFB2;
+        polygon-opacity: 0.8;
+        line-color: #FFF;
+        line-width: 0.25;
+        line-opacity: 1;
+      }
+      <%= table %> [ <%= column %> <= <%= bins[6] %>] {
+         polygon-fill: #B10026;
+      }
+      <%= table %> [ <%= column %> <= <%= bins[5] %>] {
+         polygon-fill: #E31A1C;
+      }
+      <%= table %> [ <%= column %> <= <%= bins[4] %>] {
+         polygon-fill: #FC4E2A;
+      }
+      <%= table %> [ <%= column %> <= <%= bins[3] %>] {
+         polygon-fill: #FD8D3C;
+      }
+      <%= table %> [ <%= column %> <= <%= bins[2] %>] {
+         polygon-fill: #FEB24C;
+      }
+      <%= table %> [ <%= column %> <= <%= bins[1] %>] {
+         polygon-fill: #FED976;
+      }
+      <%= table %> [ <%= column %> <= 2<%= bins[0] %>] {
+         polygon-fill: #FFFFB2;
+      }
+    </script>
+
+  </body>
+</html>
