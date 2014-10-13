@@ -23,6 +23,18 @@
     <script>
     /*globals cartodb, L, _ : true */
 
+    /**
+     *  This example:
+     *  1. Loads our mapbox base layer on a cartojs map
+     *  2. Creates 7 bins for numeric data from a data table
+     *  3. Creates a style for a choropleth map using those bins
+     *  4. Selects data from a geo table and applies those styles
+     *
+     *  The data here is Census 2010 block groups and EPA Smart Location data,
+     *  specifically column d5ar: "Jobs within 45 minutes auto travel time,
+     *  time-decay (network travel time) weighted"
+     */
+
 
     var getBins = function(done) {
       var sql = new cartodb.SQL({ user: 'localdata' });
